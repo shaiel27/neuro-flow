@@ -14,7 +14,28 @@ const ResourcesScreen: React.FC = () => {
   const [showMindfulEntry, setShowMindfulEntry] = useState(false);
   const [showIncomeEntry, setShowIncomeEntry] = useState(false);
   const [expenses, setExpenses] = useState<MindfulExpense[]>(mockMindfulExpenses);
-  const [incomes, setIncomes] = useState<MindfulIncome[]>([]);
+  const [incomes, setIncomes] = useState<MindfulIncome[]>([
+    {
+      id: 'inc_1',
+      amount: 1800,
+      category: 'salary',
+      type: 'regular',
+      description: 'Salario (quincena)',
+      timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      isRecurring: true,
+      impactOnEnergy: 30,
+    },
+    {
+      id: 'inc_2',
+      amount: 420,
+      category: 'freelance',
+      type: 'bonus',
+      description: 'Proyecto freelance',
+      timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      isRecurring: false,
+      impactOnEnergy: 20,
+    },
+  ]);
 
   const handleAddExpense = () => {
     setShowMindfulEntry(true);
@@ -79,6 +100,8 @@ const ResourcesScreen: React.FC = () => {
         incomes={incomes}
         onAddExpense={handleAddExpense}
         onAddIncome={handleAddIncome}
+        wealthHealth={mockWealthHealth}
+        stressProjection={mockStressProjection}
       />
 
       {/* Modern Expense Form */}

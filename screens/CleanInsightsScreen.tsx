@@ -6,6 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   Dimensions,
+  TouchableOpacity,
+  Alert,
 } from 'react-native';
 import {
   Brain,
@@ -16,6 +18,16 @@ import {
   Activity,
   Zap,
   Target,
+  Calendar,
+  Filter,
+  Download,
+  Share,
+  BarChart3,
+  PieChart,
+  TrendingDown,
+  Clock,
+  Award,
+  Lightbulb,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../types/colors';
@@ -30,6 +42,22 @@ const CleanInsightsScreen: React.FC = () => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [correlationData, setCorrelationData] = useState<CorrelationData | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Nuevos estados para funcionalidades avanzadas
+  const [selectedTimeRange, setSelectedTimeRange] = useState<'week' | 'month' | 'quarter'>('week');
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'energy' | 'finance' | 'productivity'>('all');
+  const [showPredictions, setShowPredictions] = useState(false);
+  const [predictions, setPredictions] = useState<{
+    nextWeekEnergy: number;
+    nextWeekExpenses: number;
+    productivityTrend: 'up' | 'down' | 'stable';
+    recommendations: string[];
+  }>({
+    nextWeekEnergy: 0,
+    nextWeekExpenses: 0,
+    productivityTrend: 'stable',
+    recommendations: []
+  });
 
   // Datos de prueba para EnergySnapshots
   const mockEnergySnapshots: EnergySnapshot[] = [
@@ -44,7 +72,62 @@ const CleanInsightsScreen: React.FC = () => {
 
   useEffect(() => {
     loadInsights();
+    generatePredictions();
   }, []);
+
+  const generatePredictions = () => {
+    // Simular análisis predictivo
+    const avgEnergy = mockEnergySnapshots.reduce((sum, snap) => sum + snap.currentEnergy, 0) / mockEnergySnapshots.length;
+    const avgExpenses = mockMindfulExpenses.reduce((sum, exp) => sum + exp.amount, 0) / mockMindfulExpenses.length;
+    
+    setPredictions({
+      nextWeekEnergy: Math.round(avgEnergy * 0.9), // Predicción conservadora
+      nextWeekExpenses: Math.round(avgExpenses * 1.1), // Ligero aumento esperado
+      productivityTrend: avgEnergy > 60 ? 'up' : avgEnergy > 40 ? 'stable' : 'down',
+      recommendations: [
+        avgEnergy < 50 ? 'Considera programar más pausas activas' : 'Tu nivel de energía es óptimo',
+        avgExpenses > 100 ? 'Revisa tus patrones de gasto emocional' : 'Tus gastos están bajo control',
+        'Mantén tu rutina actual de descansos para maximizar productividad'
+      ]
+    });
+  };
+
+  const handleExportInsights = () => {
+    const exportData = {
+      insights,
+      correlationData,
+      predictions,
+      timeRange: selectedTimeRange,
+      category: selectedCategory,
+      exportDate: new Date().toISOString()
+    };
+    
+    Alert.alert(
+      'Exportar Insights',
+      '¿Quieres exportar tus análisis y predicciones?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Exportar', onPress: () => console.log('Exportando datos:', exportData) }
+      ]
+    );
+  };
+
+  const handleShareInsights = () => {
+    const summary = `Mis insights de NeuroFlow:\n\n` +
+      `Energía predicha: ${predictions.nextWeekEnergy}%\n` +
+      `Gastos estimados: $${predictions.nextWeekExpenses}\n` +
+      `Tendencia: ${predictions.productivityTrend}\n\n` +
+      `Recomendación principal: ${predictions.recommendations[0]}`;
+    
+    Alert.alert(
+      'Compartir Insights',
+      '¿Quieres compartir tus análisis?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Compartir', onPress: () => console.log('Compartiendo:', summary) }
+      ]
+    );
+  };
 
   const loadInsights = () => {
     const generatedInsights = InsightService.generateCorrelationInsights(
@@ -78,54 +161,121 @@ const CleanInsightsScreen: React.FC = () => {
   const CorrelationChart: React.FC = () => {
     if (!correlationData) return null;
 
-    const maxValue = Math.max(
-      ...correlationData.datasets[0].data,
-      ...correlationData.datasets[1].data
-    );
+    const getAverage = (values: number[]) => {
+      if (values.length === 0) return 0;
+      return values.reduce((sum, v) => sum + v, 0) / values.length;
+    };
+
+    const getTrendPercent = (values: number[]) => {
+      if (values.length < 2) return 0;
+      const first = values[0] ?? 0;
+      const last = values[values.length - 1] ?? 0;
+      if (first === 0) return 0;
+      return ((last - first) / Math.abs(first)) * 100;
+    };
+
+    const getPearsonCorrelation = (x: number[], y: number[]) => {
+      const n = Math.min(x.length, y.length);
+      if (n < 2) return 0;
+      const xs = x.slice(0, n);
+      const ys = y.slice(0, n);
+      const meanX = getAverage(xs);
+      const meanY = getAverage(ys);
+
+      let num = 0;
+      let denX = 0;
+      let denY = 0;
+      for (let i = 0; i < n; i++) {
+        const dx = (xs[i] ?? 0) - meanX;
+        const dy = (ys[i] ?? 0) - meanY;
+        num += dx * dy;
+        denX += dx * dx;
+        denY += dy * dy;
+      }
+      if (denX === 0 || denY === 0) return 0;
+      return num / Math.sqrt(denX * denY);
+    };
+
+    const energy = correlationData.datasets[0]?.data ?? [];
+    const expenses = correlationData.datasets[1]?.data ?? [];
+    const energyAvg = Math.round(getAverage(energy));
+    const expensesAvg = Math.round(getAverage(expenses));
+    const energyTrend = getTrendPercent(energy);
+    const expensesTrend = getTrendPercent(expenses);
+    const corr = Math.abs(getPearsonCorrelation(energy, expenses));
+    const corrScore = Math.round(corr * 100);
+
+    const energyMax = Math.max(...energy, 1);
+    const expensesMax = Math.max(...expenses, 1);
 
     return (
       <View style={styles.chartContainer}>
         <View style={styles.chartHeader}>
-          <Text style={styles.chartTitle}>Correlación Energía vs Gastos Emocionales</Text>
+          <Text style={styles.chartTitle}>Resumen semanal</Text>
         </View>
-        
-        <View style={styles.chartLegend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: Colors.accent }]} />
-            <Text style={styles.legendText}>Nivel de Energía</Text>
+
+        <View style={styles.summaryGrid}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Energía</Text>
+            <Text style={styles.summaryValue}>{energyAvg}%</Text>
+            <Text style={styles.summaryMeta}>
+              {energyTrend >= 0 ? `+${Math.round(energyTrend)}%` : `${Math.round(energyTrend)}%`}
+            </Text>
           </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: Colors.tertiary }]} />
-            <Text style={styles.legendText}>Gastos Emocionales</Text>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Gasto</Text>
+            <Text style={styles.summaryValue}>${expensesAvg}</Text>
+            <Text style={styles.summaryMeta}>
+              {expensesTrend >= 0 ? `+${Math.round(expensesTrend)}%` : `${Math.round(expensesTrend)}%`}
+            </Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Correlación</Text>
+            <Text style={styles.summaryValue}>{corrScore}%</Text>
+            <View style={styles.corrTrack}>
+              <View style={[styles.corrFill, { width: `${corrScore}%` }]} />
+            </View>
           </View>
         </View>
 
-        <View style={styles.chartGrid}>
-          {correlationData.labels.map((label, index) => (
-            <View key={index} style={styles.chartColumn}>
-              <View style={styles.chartBars}>
-                <View
-                  style={[
-                    styles.chartBar,
-                    {
-                      height: `${(correlationData.datasets[0].data[index] / maxValue) * 100}%`,
-                      backgroundColor: Colors.accent,
-                    }
-                  ]}
-                />
-                <View
-                  style={[
-                    styles.chartBar,
-                    {
-                      height: `${(correlationData.datasets[1].data[index] / maxValue) * 100}%`,
-                      backgroundColor: Colors.tertiary,
-                    }
-                  ]}
-                />
-              </View>
-              <Text style={styles.chartLabel}>{label.slice(0, 3)}</Text>
+        <View style={styles.sparkSection}>
+          <View style={styles.sparkBlock}>
+            <View style={styles.sparkHeader}>
+              <View style={[styles.legendDot, { backgroundColor: Colors.accent }]} />
+              <Text style={styles.sparkTitle}>Energía (7 días)</Text>
             </View>
-          ))}
+            <View style={styles.sparkBars}>
+              {energy.map((v, idx) => (
+                <View key={`e_${idx}`} style={styles.sparkBarWrap}>
+                  <View
+                    style={[
+                      styles.sparkBar,
+                      { height: `${Math.max(6, (v / energyMax) * 100)}%`, backgroundColor: Colors.accent }
+                    ]}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.sparkBlock}>
+            <View style={styles.sparkHeader}>
+              <View style={[styles.legendDot, { backgroundColor: Colors.tertiary }]} />
+              <Text style={styles.sparkTitle}>Gastos (7 días)</Text>
+            </View>
+            <View style={styles.sparkBars}>
+              {expenses.map((v, idx) => (
+                <View key={`x_${idx}`} style={styles.sparkBarWrap}>
+                  <View
+                    style={[
+                      styles.sparkBar,
+                      { height: `${Math.max(6, (v / expensesMax) * 100)}%`, backgroundColor: Colors.tertiary }
+                    ]}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
         </View>
       </View>
     );
@@ -340,6 +490,80 @@ const styles = StyleSheet.create({
   legendText: {
     fontSize: 12,
     color: Colors.textSecondary,
+  },
+  summaryGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  summaryItem: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 12,
+  },
+  summaryLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 6,
+    textTransform: 'lowercase',
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  summaryMeta: {
+    fontSize: 11,
+    color: Colors.textLight,
+  },
+  corrTrack: {
+    height: 6,
+    backgroundColor: Colors.border,
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginTop: 8,
+  },
+  corrFill: {
+    height: '100%',
+    backgroundColor: Colors.accent,
+    borderRadius: 999,
+  },
+  sparkSection: {
+    gap: 12,
+  },
+  sparkBlock: {
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 12,
+  },
+  sparkHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  sparkTitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textTransform: 'lowercase',
+  },
+  sparkBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    height: 44,
+  },
+  sparkBarWrap: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
+  sparkBar: {
+    width: '100%',
+    borderRadius: 8,
+    opacity: 0.9,
   },
   chartGrid: {
     flexDirection: 'row',

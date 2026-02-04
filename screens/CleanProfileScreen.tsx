@@ -8,7 +8,12 @@ import {
   Switch,
   RefreshControl,
   TextInput,
+  Alert,
+  Share,
+  Linking,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   User,
   Settings,
@@ -23,8 +28,14 @@ import {
   CheckCircle,
   Zap,
   Activity,
+  Edit3,
+  Calendar,
+  Download,
+  Upload,
+  UserPlus,
+  LogOut,
+  RefreshCw,
 } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '../types/colors';
 import { UserProfile, UserPreferences, IAuditLog } from '../types';
 import { InsightService } from '../services/InsightService';
@@ -35,28 +46,159 @@ const CleanProfileScreen: React.FC = () => {
     id: 'user_1',
     name: 'Alex Chen',
     baseSalary: 5000,
-    email: 'alex@neuroflow.app',
+    email: 'alex.chen@example.com',
+    avatar: undefined,
     preferences: {
       antiProductivityMode: false,
       notificationsEnabled: true,
       darkMode: false,
       autoBreaks: true,
-      breakDuration: 20,
+      breakDuration: 15,
       workingHours: {
         start: '09:00',
-        end: '18:00'
+        end: '17:00'
       }
     }
   });
 
-  const [auditLogs, setAuditLogs] = useState<IAuditLog[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [editingSalary, setEditingSalary] = useState(false);
   const [tempSalary, setTempSalary] = useState(userProfile.baseSalary.toString());
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [tempName, setTempName] = useState(userProfile.name);
+  const [tempEmail, setTempEmail] = useState(userProfile.email);
+
+  type ScheduleCategory = 'trabajo' | 'personal' | 'salud' | 'aprendizaje';
+  type ScheduleActivity = {
+    id: string;
+    dayIndex: number;
+    title: string;
+    startTime: string;
+    endTime: string;
+    category: ScheduleCategory;
+    color: string;
+  };
+
+  const weekDays = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'] as const;
+  const todayIndex = (new Date().getDay() + 6) % 7;
+
+  const [selectedDayIndex, setSelectedDayIndex] = useState<number>(todayIndex);
+  const [scheduleFormOpen, setScheduleFormOpen] = useState(false);
+  const [scheduleEditingId, setScheduleEditingId] = useState<string | null>(null);
+  const [scheduleDraft, setScheduleDraft] = useState<Omit<ScheduleActivity, 'id'>>({
+    dayIndex: todayIndex,
+    title: '',
+    startTime: '09:00',
+    endTime: '10:00',
+    category: 'personal',
+    color: Colors.accent,
+  });
+
+  const [scheduleActivities, setScheduleActivities] = useState<ScheduleActivity[]>(() => {
+    const base: ScheduleActivity[] = [];
+    for (let d = 0; d < 5; d++) {
+      base.push({
+        id: `work_${d}`,
+        dayIndex: d,
+        title: 'Trabajo',
+        startTime: userProfile.preferences.workingHours.start,
+        endTime: userProfile.preferences.workingHours.end,
+        category: 'trabajo',
+        color: Colors.primary,
+      });
+    }
+    base.push({
+      id: 'med_0',
+      dayIndex: todayIndex,
+      title: 'Meditación',
+      startTime: '07:30',
+      endTime: '07:45',
+      category: 'salud',
+      color: Colors.accent,
+    });
+    return base;
+  });
+  
+  // Nuevos estados para funcionalidades avanzadas
+  const [stats, setStats] = useState({
+    totalInsights: 0,
+    accuracyRate: 0,
+    daysActive: 0,
+    energySaved: 0
+  });
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
+
+  const [auditLogs, setAuditLogs] = useState<IAuditLog[]>([]);
 
   useEffect(() => {
     loadAuditLogs();
+    calculateStats();
   }, []);
+
+  const calculateStats = () => {
+    // Simular cálculo de estadísticas
+    setStats({
+      totalInsights: 147,
+      accuracyRate: 87,
+      daysActive: 45,
+      energySaved: 23
+    });
+  };
+
+  const handleExportData = () => {
+    const userData = {
+      profile: userProfile,
+      auditLogs,
+      stats,
+      exportDate: new Date().toISOString()
+    };
+    
+    Share.share({
+      message: JSON.stringify(userData, null, 2),
+      title: 'NeuroFlow - Exportación de Datos'
+    });
+  };
+
+  const handleImportData = () => {
+    Alert.alert(
+      'Importar Datos',
+      'Esta acción sobreescribirá tus datos actuales. ¿Continuar?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Importar', onPress: () => console.log('Importar datos') }
+      ]
+    );
+  };
+
+  const handleResetData = () => {
+    Alert.alert(
+      'Restablecer Datos',
+      '¿Estás seguro de que quieres restablecer todos los datos? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Restablecer', 
+          style: 'destructive',
+          onPress: () => {
+            setAuditLogs([]);
+            setStats({
+              totalInsights: 0,
+              accuracyRate: 0,
+              daysActive: 0,
+              energySaved: 0
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const handleShareProfile = () => {
+    Share.share({
+      message: `Únete a NeuroFlow - ${userProfile.name} está optimizando su productividad y bienestar.`,
+      title: 'NeuroFlow App'
+    });
+  };
 
   const loadAuditLogs = () => {
     const decisionLogs = InsightService.getDecisionLog();
@@ -90,6 +232,82 @@ const CleanProfileScreen: React.FC = () => {
         [key]: value
       }
     }));
+  };
+
+  const timeToMinutes = (time: string) => {
+    const parts = time.split(':');
+    if (parts.length !== 2) return null;
+    const h = Number(parts[0]);
+    const m = Number(parts[1]);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
+    if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+    return h * 60 + m;
+  };
+
+  const getDurationMinutes = (startTime: string, endTime: string) => {
+    const s = timeToMinutes(startTime);
+    const e = timeToMinutes(endTime);
+    if (s === null || e === null) return 0;
+    return Math.max(0, e - s);
+  };
+
+  const openNewScheduleItem = () => {
+    setScheduleEditingId(null);
+    setScheduleDraft(prev => ({
+      ...prev,
+      dayIndex: selectedDayIndex,
+      title: '',
+      startTime: '09:00',
+      endTime: '10:00',
+      category: 'personal',
+      color: Colors.accent,
+    }));
+    setScheduleFormOpen(true);
+  };
+
+  const openEditScheduleItem = (activityId: string) => {
+    const activity = scheduleActivities.find(a => a.id === activityId);
+    if (!activity) return;
+    setScheduleEditingId(activityId);
+    const { id: _id, ...rest } = activity;
+    setSelectedDayIndex(rest.dayIndex);
+    setScheduleDraft(rest);
+    setScheduleFormOpen(true);
+  };
+
+  const deleteScheduleItem = (activityId: string) => {
+    setScheduleActivities(prev => prev.filter(a => a.id !== activityId));
+  };
+
+  const saveScheduleDraft = () => {
+    const s = timeToMinutes(scheduleDraft.startTime);
+    const e = timeToMinutes(scheduleDraft.endTime);
+    if (!scheduleDraft.title.trim()) {
+      Alert.alert('Actividad', 'Agrega un nombre para la actividad.');
+      return;
+    }
+    if (s === null || e === null) {
+      Alert.alert('Horario', 'Formato de hora inválido. Usa HH:MM.');
+      return;
+    }
+    if (e <= s) {
+      Alert.alert('Horario', 'La hora de fin debe ser mayor que la de inicio.');
+      return;
+    }
+
+    if (scheduleEditingId) {
+      setScheduleActivities(prev =>
+        prev.map(a => (a.id === scheduleEditingId ? { ...a, ...scheduleDraft } : a))
+      );
+    } else {
+      const newItem: ScheduleActivity = {
+        id: `act_${Date.now()}`,
+        ...scheduleDraft,
+      };
+      setScheduleActivities(prev => [...prev, newItem]);
+    }
+    setScheduleFormOpen(false);
+    setScheduleEditingId(null);
   };
 
   const saveSalary = () => {
@@ -331,18 +549,161 @@ const CleanProfileScreen: React.FC = () => {
 
         {/* Horario Laboral */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Horario Trabajo</Text>
-          
-          <View style={styles.scheduleCard}>
-            <View style={styles.scheduleItem}>
-              <Text style={styles.scheduleTime}>{userProfile.preferences.workingHours.start}</Text>
-              <Text style={styles.scheduleLabel}>Inicio</Text>
-            </View>
-            <View style={styles.scheduleItem}>
-              <Text style={styles.scheduleTime}>{userProfile.preferences.workingHours.end}</Text>
-              <Text style={styles.scheduleLabel}>Fin</Text>
-            </View>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Horario personal</Text>
+            <TouchableOpacity style={styles.addPill} onPress={openNewScheduleItem}>
+              <Text style={styles.addPillText}>Agregar</Text>
+            </TouchableOpacity>
           </View>
+
+          <View style={styles.daySelectorRow}>
+            {weekDays.map((d, idx) => {
+              const isActive = idx === selectedDayIndex;
+              return (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => {
+                    setSelectedDayIndex(idx);
+                    setScheduleDraft(prev => ({ ...prev, dayIndex: idx }));
+                  }}
+                  style={[styles.dayPill, isActive && styles.dayPillActive]}
+                >
+                  <Text style={[styles.dayPillText, isActive && styles.dayPillTextActive]}>{d}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {(() => {
+            const dayItems = scheduleActivities
+              .filter(a => a.dayIndex === selectedDayIndex)
+              .sort((a, b) => (timeToMinutes(a.startTime) ?? 0) - (timeToMinutes(b.startTime) ?? 0));
+            const totalMinutes = dayItems.reduce(
+              (sum, a) => sum + getDurationMinutes(a.startTime, a.endTime),
+              0
+            );
+
+            return (
+              <>
+                <View style={styles.scheduleMetaRow}>
+                  <View style={styles.metaChip}>
+                    <Text style={styles.metaChipText}>{dayItems.length} actividades</Text>
+                  </View>
+                  <View style={styles.metaChip}>
+                    <Text style={styles.metaChipText}>{totalMinutes} min</Text>
+                  </View>
+                </View>
+
+                <View style={styles.scheduleListCard}>
+                  {dayItems.length === 0 ? (
+                    <View style={styles.scheduleEmpty}>
+                      <Text style={styles.scheduleEmptyText}>Sin actividades para este día</Text>
+                      <Text style={styles.scheduleEmptySubtext}>Agrega tu primera actividad</Text>
+                    </View>
+                  ) : (
+                    dayItems.map(a => (
+                      <View key={a.id} style={styles.scheduleRow}>
+                        <View style={[styles.scheduleColor, { backgroundColor: a.color }]} />
+                        <View style={styles.scheduleMain}>
+                          <Text style={styles.scheduleTitle}>{a.title}</Text>
+                          <Text style={styles.scheduleTimeRange}>
+                            {a.startTime}–{a.endTime} · {getDurationMinutes(a.startTime, a.endTime)}m
+                          </Text>
+                          <Text style={styles.scheduleCategory}>{a.category}</Text>
+                        </View>
+                        <View style={styles.scheduleActions}>
+                          <TouchableOpacity onPress={() => openEditScheduleItem(a.id)}>
+                            <Text style={styles.editButton}>Editar</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => deleteScheduleItem(a.id)}>
+                            <Text style={styles.deleteText}>×</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </>
+            );
+          })()}
+
+          {scheduleFormOpen && (
+            <View style={styles.scheduleFormCard}>
+              <Text style={styles.formTitleText}>
+                {scheduleEditingId ? 'Editar actividad' : 'Nueva actividad'}
+              </Text>
+
+              <TextInput
+                style={styles.formInput}
+                placeholder="Nombre"
+                value={scheduleDraft.title}
+                onChangeText={(t) => setScheduleDraft(prev => ({ ...prev, title: t }))}
+              />
+
+              <View style={styles.timeRow}>
+                <TextInput
+                  style={[styles.formInput, styles.timeInput]}
+                  placeholder="Inicio (HH:MM)"
+                  value={scheduleDraft.startTime}
+                  onChangeText={(t) => setScheduleDraft(prev => ({ ...prev, startTime: t }))}
+                  maxLength={5}
+                />
+                <TextInput
+                  style={[styles.formInput, styles.timeInput]}
+                  placeholder="Fin (HH:MM)"
+                  value={scheduleDraft.endTime}
+                  onChangeText={(t) => setScheduleDraft(prev => ({ ...prev, endTime: t }))}
+                  maxLength={5}
+                />
+              </View>
+
+              <View style={styles.categoryRow}>
+                {(['trabajo', 'personal', 'salud', 'aprendizaje'] as ScheduleCategory[]).map((c) => {
+                  const active = scheduleDraft.category === c;
+                  return (
+                    <TouchableOpacity
+                      key={c}
+                      onPress={() => setScheduleDraft(prev => ({ ...prev, category: c }))}
+                      style={[styles.categoryChip, active && styles.categoryChipActive]}
+                    >
+                      <Text style={[styles.categoryChipText, active && styles.categoryChipTextActive]}>{c}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={styles.colorRow}>
+                {[Colors.accent, Colors.primary, Colors.tertiary, '#FF9800', '#4CAF50', '#9C27B0'].map((color) => {
+                  const active = scheduleDraft.color === color;
+                  return (
+                    <TouchableOpacity
+                      key={color}
+                      onPress={() => setScheduleDraft(prev => ({ ...prev, color }))}
+                      style={[styles.colorDot, { backgroundColor: color }, active && styles.colorDotActive]}
+                    />
+                  );
+                })}
+              </View>
+
+              <View style={styles.formButtonsRow}>
+                <TouchableOpacity
+                  style={[styles.formButton, styles.formButtonPrimary]}
+                  onPress={saveScheduleDraft}
+                >
+                  <Text style={[styles.formButtonText, styles.formButtonTextPrimary]}>Guardar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.formButton}
+                  onPress={() => {
+                    setScheduleFormOpen(false);
+                    setScheduleEditingId(null);
+                  }}
+                >
+                  <Text style={styles.formButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -662,6 +1023,228 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.textSecondary,
     textTransform: 'lowercase',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  addPillText: {
+    fontSize: 12,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    textTransform: 'lowercase',
+  },
+  daySelectorRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  dayPill: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+  },
+  dayPillActive: {
+    backgroundColor: `${Colors.accent}20`,
+    borderColor: `${Colors.accent}40`,
+  },
+  dayPillText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+  },
+  dayPillTextActive: {
+    color: Colors.textPrimary,
+  },
+  scheduleMetaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  metaChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.surface,
+  },
+  metaChipText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '500',
+    textTransform: 'lowercase',
+  },
+  scheduleListCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 12,
+  },
+  scheduleEmpty: {
+    paddingVertical: 18,
+    alignItems: 'center',
+  },
+  scheduleEmptyText: {
+    fontSize: 14,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  scheduleEmptySubtext: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  scheduleColor: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: 10,
+  },
+  scheduleMain: {
+    flex: 1,
+  },
+  scheduleTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 2,
+  },
+  scheduleTimeRange: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginBottom: 2,
+  },
+  scheduleCategory: {
+    fontSize: 11,
+    color: Colors.textLight,
+    textTransform: 'lowercase',
+  },
+  scheduleActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginLeft: 10,
+  },
+  deleteText: {
+    fontSize: 18,
+    color: Colors.textSecondary,
+    lineHeight: 18,
+  },
+  scheduleFormCard: {
+    backgroundColor: Colors.cardBackground,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 12,
+  },
+  formTitleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    marginBottom: 10,
+  },
+  formInput: {
+    backgroundColor: Colors.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: Colors.textPrimary,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  timeInput: {
+    flex: 1,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  categoryChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  categoryChipActive: {
+    backgroundColor: `${Colors.primary}15`,
+    borderColor: `${Colors.primary}35`,
+  },
+  categoryChipText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'lowercase',
+  },
+  categoryChipTextActive: {
+    color: Colors.textPrimary,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  colorDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+  },
+  colorDotActive: {
+    borderWidth: 2,
+    borderColor: Colors.textPrimary,
+  },
+  formButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  formButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  formButtonPrimary: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
+  },
+  formButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    textTransform: 'lowercase',
+  },
+  formButtonTextPrimary: {
+    color: '#FFFFFF',
   },
 });
 

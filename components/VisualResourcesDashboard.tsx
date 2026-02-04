@@ -20,7 +20,7 @@ import {
   Zap,
 } from 'lucide-react-native';
 import { Colors } from '../types/colors';
-import { MindfulExpense, MindfulIncome } from '../types';
+import { MindfulExpense, MindfulIncome, StressProjection, WealthHealth } from '../types';
 import { ModernExpenseForm } from './ModernExpenseForm';
 import { IncomeEntryForm } from './IncomeEntryForm';
 
@@ -29,6 +29,8 @@ interface VisualResourcesDashboardProps {
   incomes?: MindfulIncome[];
   onAddExpense?: () => void;
   onAddIncome?: () => void;
+  wealthHealth?: WealthHealth;
+  stressProjection?: StressProjection;
 }
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -38,6 +40,8 @@ export const VisualResourcesDashboard: React.FC<VisualResourcesDashboardProps> =
   incomes = [],
   onAddExpense,
   onAddIncome,
+  wealthHealth,
+  stressProjection,
 }) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'details'>('overview');
   const [showExpenseForm, setShowExpenseForm] = useState(false);
@@ -49,6 +53,15 @@ export const VisualResourcesDashboard: React.FC<VisualResourcesDashboardProps> =
   const totalIncomes = incomes.reduce((sum, inc) => sum + inc.amount, 0);
   const balance = totalIncomes - totalExpenses;
   const savingsRate = totalIncomes > 0 ? ((totalIncomes - totalExpenses) / totalIncomes) * 100 : 0;
+
+  const emotionalSpent = expenses.filter(e => e.isEmotionalSpending).reduce((sum, e) => sum + e.amount, 0);
+  const emotionalRatio = totalExpenses > 0 ? (emotionalSpent / totalExpenses) * 100 : 0;
+
+  const stressLabel = stressProjection?.weeklyStress ?? 'medium';
+  const stressColor =
+    stressLabel === 'high' ? Colors.tertiary :
+    stressLabel === 'low' ? Colors.accent :
+    Colors.primary;
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -244,6 +257,47 @@ export const VisualResourcesDashboard: React.FC<VisualResourcesDashboardProps> =
                     </View>
                     <Text style={styles.progressValue}>${totalExpenses.toFixed(0)}</Text>
                   </View>
+                </View>
+              </View>
+            </VisualCard>
+
+            <VisualCard>
+              <View style={styles.overviewHeaderRow}>
+                <Text style={styles.overviewTitle}>hoy</Text>
+                <View style={styles.overviewPills}>
+                  <View style={[styles.overviewPillDot, { backgroundColor: stressColor }]} />
+                  <Text style={styles.overviewPillText}>{`estrés ${stressLabel}`}</Text>
+                </View>
+              </View>
+
+              <View style={styles.overviewStatsGrid}>
+                <View style={styles.overviewStatCard}>
+                  <Text style={styles.overviewStatLabel}>safe to spend</Text>
+                  <Text style={styles.overviewStatValue}>
+                    ${((wealthHealth?.safeToSpend ?? 0)).toFixed(0)}
+                  </Text>
+                  <Text style={styles.overviewStatSub}>
+                    {wealthHealth?.financialLoad ? `carga ${wealthHealth.financialLoad}` : 'estimado'}
+                  </Text>
+                </View>
+                <View style={styles.overviewStatCard}>
+                  <Text style={styles.overviewStatLabel}>próximos pagos</Text>
+                  <Text style={styles.overviewStatValue}>
+                    ${((wealthHealth?.upcomingPayments ?? 0)).toFixed(0)}
+                  </Text>
+                  <Text style={styles.overviewStatSub}>7 días</Text>
+                </View>
+                <View style={styles.overviewStatCard}>
+                  <Text style={styles.overviewStatLabel}>gasto emocional</Text>
+                  <Text style={styles.overviewStatValue}>{Math.round(emotionalRatio)}%</Text>
+                  <Text style={styles.overviewStatSub}>
+                    ${emotionalSpent.toFixed(0)}
+                  </Text>
+                </View>
+                <View style={styles.overviewStatCard}>
+                  <Text style={styles.overviewStatLabel}>días seguros</Text>
+                  <Text style={styles.overviewStatValue}>{stressProjection?.safeDays ?? 0}</Text>
+                  <Text style={styles.overviewStatSub}>esta semana</Text>
                 </View>
               </View>
             </VisualCard>
@@ -556,6 +610,66 @@ const styles = StyleSheet.create({
   },
   overviewContent: {
     gap: 20,
+  },
+  overviewHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  overviewTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.textPrimary,
+    textTransform: 'lowercase',
+  },
+  overviewPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.surface,
+  },
+  overviewPillDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  overviewPillText: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textTransform: 'lowercase',
+    fontWeight: '500',
+  },
+  overviewStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  overviewStatCard: {
+    width: (screenWidth - 72) / 2,
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 14,
+  },
+  overviewStatLabel: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    textTransform: 'lowercase',
+    marginBottom: 6,
+  },
+  overviewStatValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  overviewStatSub: {
+    fontSize: 11,
+    color: Colors.textLight,
+    textTransform: 'lowercase',
   },
   visualCard: {
     backgroundColor: Colors.cardBackground,
