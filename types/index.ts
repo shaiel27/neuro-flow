@@ -112,3 +112,66 @@ export interface ResourcesModule {
   recentExpenses: MindfulExpense[];
   stressProjection: StressProjection;
 }
+
+// Nuevos tipos para el módulo Insights
+export interface EnergySnapshot {
+  id: string;
+  currentEnergy: number; // 0-100
+  timestamp: Date;
+  cognitiveLoad: CognitiveLoad;
+  activities: string[];
+  mood: EmotionalState;
+}
+
+export interface Insight {
+  id: string;
+  type: 'info' | 'warning' | 'critical' | 'success';
+  title: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high';
+  timestamp: Date;
+  actionRequired: boolean;
+  suggestedAction?: string;
+  confidence?: number; // 0-1 para XAI
+}
+
+export interface CorrelationData {
+  labels: string[];
+  datasets: Array<{
+    data: number[];
+    color: (opacity?: number) => string;
+    strokeWidth: number;
+  }>;
+}
+
+// Tipos para el módulo Profile
+export interface UserProfile {
+  id: string;
+  name: string;
+  baseSalary: number;
+  email: string;
+  avatar?: string;
+  preferences: UserPreferences;
+}
+
+export interface UserPreferences {
+  antiProductivityMode: boolean;
+  notificationsEnabled: boolean;
+  darkMode: boolean;
+  autoBreaks: boolean;
+  breakDuration: number; // minutos
+  workingHours: {
+    start: string;
+    end: string;
+  };
+}
+
+export interface IAuditLog {
+  id: string;
+  timestamp: Date;
+  decision: string;
+  reasoning: string;
+  confidence: number;
+  impact: 'low' | 'medium' | 'high';
+  userAction?: 'accepted' | 'rejected' | 'pending';
+}

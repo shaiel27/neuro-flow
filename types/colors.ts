@@ -7,6 +7,7 @@ export const Colors = {
   
   // Acentos y texto
   accent: '#8B7355', // Marrón suave para textos e iconos
+  accentLight: '#A68B6B', // Marrón más claro
   textPrimary: '#424242', // Texto principal
   textSecondary: '#6B7280', // Texto secundario
   textLight: '#9CA3AF', // Texto ligero
@@ -20,8 +21,21 @@ export const Colors = {
   rest: '#81C784', // Verde suave para descanso
   border: '#F5F5F5', // Bordes sutiles
   
+  // Estados financieros y emocionales
+  positive: '#4CAF50', // Verde para positivos
+  caution: '#FF9800', // Naranja para precaución
+  negative: '#F44336', // Rojo para negativos
+  
   // Sombras
   shadow: '#000000',
+  
+  // Colores emocionales (para compatibilidad)
+  emotional: {
+    calm: '#4CAF50',
+    happy: '#4CAF50',
+    stressed: '#FF9800',
+    tired: '#F44336',
+  },
 };
 
 // Colores por nivel de energía
@@ -40,9 +54,24 @@ export const CognitiveLoadColors = {
   rest: Colors.rest,
 };
 
+// Colores por carga financiera
+export const FinancialLoadColors = {
+  high: Colors.caution,
+  medium: Colors.accent,
+  low: Colors.positive,
+};
+
 // Colores para finanzas (manteniendo compatibilidad)
 export const FinanceColors = {
-  positive: '#4CAF50', // Verde para positivos
-  neutral: '#FF9800', // Naranja para neutrales  
-  caution: '#F44336', // Rojo para precaución
+  positive: Colors.positive,
+  neutral: Colors.accent,  
+  caution: Colors.caution,
+};
+
+// Colores emocionales
+export const EmotionalColors = {
+  calm: Colors.positive,
+  happy: Colors.positive,
+  stressed: Colors.caution,
+  tired: Colors.negative,
 };

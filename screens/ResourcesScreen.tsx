@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Wallet, TrendingUp, Brain, Heart, Zap, Plus, Calendar, AlertCircle } from 'lucide-react-native';
 import { Colors } from '../types/colors';
 import { mockWealthHealth, mockMindfulExpenses, mockStressProjection } from '../types/mockData';
 import { MindfulExpense, MindfulIncome } from '../types';
-import { EconomyDashboard } from '../components/EconomyDashboard';
+import { VisualResourcesDashboard } from '../components/VisualResourcesDashboard';
 import { ModernExpenseForm } from '../components/ModernExpenseForm';
 import { IncomeEntryForm } from '../components/IncomeEntryForm';
 import { EnergyFinanceIntegration } from '../services/energyFinanceIntegration';
@@ -71,50 +70,15 @@ const ResourcesScreen: React.FC = () => {
     setShowIncomeEntry(false);
   };
 
-  const handleTransactionPress = (transaction: MindfulExpense | MindfulIncome) => {
-    console.log('Transaction pressed:', transaction);
-  };
-
-  const getEmotionalIcon = (state: string) => {
-    switch (state) {
-      case 'calm': return Brain;
-      case 'happy': return Heart;
-      case 'stressed': return AlertCircle;
-      case 'tired': return Zap;
-      default: return Brain;
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'food': return Heart;
-      case 'leisure': return Zap;
-      case 'transport': return TrendingUp;
-      case 'services': return Calendar;
-      default: return Wallet;
-    }
-  };
-
-  const getEmotionalColor = (state: string) => {
-    switch (state) {
-      case 'calm': return '#4CAF50';
-      case 'happy': return '#FF9800';
-      case 'stressed': return '#F44336';
-      case 'tired': return '#9E9E9E';
-      default: return Colors.textSecondary;
-    }
-  };
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="dark-content" />
       
-      <EconomyDashboard
+      <VisualResourcesDashboard
         expenses={expenses}
         incomes={incomes}
         onAddExpense={handleAddExpense}
         onAddIncome={handleAddIncome}
-        onTransactionPress={handleTransactionPress}
       />
 
       {/* Modern Expense Form */}

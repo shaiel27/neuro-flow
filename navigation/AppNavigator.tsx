@@ -3,7 +3,9 @@ import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import HomeScreen from '../screens/HomeScreen';
 import ResourcesScreen from '../screens/ResourcesScreen';
-import { BottomNavigation } from '../components/BottomNavigation';
+import CleanInsightsScreen from '../screens/CleanInsightsScreen';
+import CleanProfileScreen from '../screens/CleanProfileScreen';
+import { SimpleBottomNavigation } from '../components/SimpleBottomNavigation';
 
 type TabType = 'flow' | 'resources' | 'insights' | 'profile';
 
@@ -17,9 +19,9 @@ const AppNavigator: React.FC = () => {
       case 'resources':
         return <ResourcesScreen />;
       case 'insights':
-        return <View style={styles.placeholderScreen} />;
+        return <CleanInsightsScreen />;
       case 'profile':
-        return <View style={styles.placeholderScreen} />;
+        return <CleanProfileScreen />;
       default:
         return <HomeScreen />;
     }
@@ -33,7 +35,7 @@ const AppNavigator: React.FC = () => {
         {renderScreen()}
       </View>
       
-      <BottomNavigation
+      <SimpleBottomNavigation
         activeTab={activeTab}
         onTabPress={setActiveTab}
       />
